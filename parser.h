@@ -19,8 +19,9 @@ class Parser {
 
     // 存資料
     int NumNodes, NumTerminals, NumRows, NumNets, NumPins;
-    std::map<std::string, NODE> nodes;
-    std::map<std::string, PAD> pads;
+    std::vector<std::string> node_names, pad_names;
+    std::unordered_map<std::string, NODE> nodes;
+    std::unordered_map<std::string, PAD> pads;
     std::vector<ROW> rows;
     std::vector<NET> nets;
 

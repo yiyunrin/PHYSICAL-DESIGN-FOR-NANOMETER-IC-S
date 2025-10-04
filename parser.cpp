@@ -78,9 +78,11 @@ void Parser::parseNodes(const string& filename) {
         if (!type.empty()) {
             PAD pad = PAD(node, type == "terminal_NI");
             pads[name] = pad;
+            pad_names.push_back(name);
             // cout << "pad: " << name << (type == "terminal_NI" ? " terminal_NI" : " terminal") << endl;
         } else {
             nodes[name] = node;
+            node_names.push_back(name);
             // cout << "node: " << name << endl;
         }
     }
