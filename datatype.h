@@ -41,6 +41,7 @@ class PAD : public NODE {
 
     PAD() : NODE(), NI(false) {}
     PAD(string _name, prec _w, prec _h, POS _pos, string _ori, bool _NI) : NODE(_name, _w, _h, _pos, _ori), NI(_NI) {}
+    PAD(const NODE &node, bool _NI) : NODE(node), NI(_NI) {}
     PAD(const PAD &pad) : NODE(pad.name, pad.width, pad.height, pad.pos, pad.ori), NI(pad.NI) {}
     ~PAD() = default;
 };

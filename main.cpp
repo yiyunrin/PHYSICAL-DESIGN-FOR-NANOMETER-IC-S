@@ -3,7 +3,7 @@
 #include "parser.h"
 using namespace std;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc != 2) {
         cerr << "Usage: ./HW1 <circuit.aux>" << endl;
         return 1;
@@ -16,21 +16,70 @@ int main(int argc, char* argv[]) {
     parser.parseNodes(path + parser.nodesFile);
     parser.parsePl(path + parser.plFile);
     parser.parseScl(path + parser.sclFile);
+    parser.parseNets(path + parser.netsFile);
 
-    // 測試印出一個 node 和 row
+    cout << "=== SUMMARY ===" << endl;
+
+    // --- 總數 ---
+    cout << "Total Nodes: " << parser.nodes.size() << endl;
+    cout << "Total Pads : " << parser.pads.size() << endl;
+    cout << "Total Nets : " << parser.nets.size() << endl;
+    cout << "Total Rows : " << parser.rows.size() << endl;
+    cout << endl;
+
+    // --- NODE ---
     if (!parser.nodes.empty()) {
-        auto it = parser.nodes.begin();
-        cout << "First node: " << it->second.name
-             << " pos=(" << it->second.pos.x << "," << it->second.pos.y << ")"
-             << " size=" << it->second.width << "x" << it->second.height
-             << " ori=" << it->second.ori << endl;
+        auto first = parser.nodes.begin();
+
+        cout << "[NODE] First: " << first->second.name
+             << " pos=(" << first->second.pos.x << "," << first->second.pos.y << ")"
+             << " size=" << first->second.width << "x" << first->second.height
+             << " ori=" << first->second.ori << endl;
     }
 
+    // --- PAD ---
+    if (!parser.pads.empty()) {
+        auto first = parser.pads.begin();
+
+        cout << "[PAD] First: " << first->second.name
+             << " pos=(" << first->second.pos.x << "," << first->second.pos.y << ")"
+             << " size=" << first->second.width << "x" << first->second.height
+             << " ori=" << first->second.ori
+             << " NI=" << (first->second.NI ? "true" : "false") << endl;
+    }
+
+    // --- NET ---
+    if (!parser.nets.empty()) {
+        cout << "[NET] First: " << parser.nets.front().name
+             << " degree=" << parser.nets.front().degree << endl;
+        for (auto &p : parser.nets.front().pins) {
+            cout << "   pin " << p.node
+                 << " dir=" << p.dir
+                 << " offset=(" << p.x_offset << "," << p.y_offset << ")" << endl;
+        }
+
+        cout << "[NET] Last : " << parser.nets.back().name
+             << " degree=" << parser.nets.back().degree << endl;
+        for (auto &p : parser.nets.back().pins) {
+            cout << "   pin " << p.node
+                 << " dir=" << p.dir
+                 << " offset=(" << p.x_offset << "," << p.y_offset << ")" << endl;
+        }
+    }
+
+    // --- ROW ---
     if (!parser.rows.empty()) {
-        cout << "First row y=" << parser.rows[0].pos.y
-             << " height=" << parser.rows[0].height
-             << " spacing=" << parser.rows[0].spacing
-             << " site=" << parser.rows[0].site << endl;
+        cout << "[ROW] First: y=" << parser.rows.front().pos.y
+             << " x=" << parser.rows.front().pos.x
+             << " height=" << parser.rows.front().height
+             << " spacing=" << parser.rows.front().spacing
+             << " site=" << parser.rows.front().site << endl;
+
+        cout << "[ROW] Last : y=" << parser.rows.back().pos.y
+             << " x=" << parser.rows.back().pos.x
+             << " height=" << parser.rows.back().height
+             << " spacing=" << parser.rows.back().spacing
+             << " site=" << parser.rows.back().site << endl;
     }
 
     return 0;

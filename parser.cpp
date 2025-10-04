@@ -51,11 +51,20 @@ void Parser::parseNodes(const string& filename) {
     while (getline(fin, line)) {
         if (line.empty() || line[0] == '#') continue;
 
-        string name, type;
-        prec w, h;
+        string name, type, tmp;
+        prec w, h, num;
         stringstream ss(line);
         ss >> name;
-        if (name == "UCLA" || name == "NumNodes" || name == "NumTerminals") continue;
+        if (name == "NumNodes") {
+            ss >> tmp >> num;
+            NumNodes = num;
+            continue;
+        } else if (name == "NumTerminals") {
+            ss >> tmp >> num;
+            NumTerminals = num;
+            continue;
+        } else if (name == "UCLA")
+            continue;
 
         ss >> w >> h >> type;
 
@@ -64,10 +73,16 @@ void Parser::parseNodes(const string& filename) {
         node.width = w;
         node.height = h;
         node.ori = "N";
-        node.pos = POS(0, 0);
+        node.pos = POS(0, 0);  // ?
 
-        if (type.empty()) node.ori = "N";
-        nodes[name] = node;
+        if (!type.empty()) {
+            PAD pad = PAD(node, type == "terminal_NI");
+            pads[name] = pad;
+            // cout << "pad: " << name << (type == "terminal_NI" ? " terminal_NI" : " terminal") << endl;
+        } else {
+            nodes[name] = node;
+            // cout << "node: " << name << endl;
+        }
     }
     cout << "[Nodes] Loaded " << nodes.size() << " nodes." << endl;
 }
@@ -85,14 +100,20 @@ void Parser::parsePl(const string& filename) {
 
         string name, colon, orient;
         prec x, y;
-        string fixedFlag;
+        string movetype;
 
         stringstream ss(line);
-        ss >> name >> x >> y >> colon >> orient >> fixedFlag;
+        ss >> name >> x >> y >> colon >> orient >> movetype;
+        if (name == "UCLA") continue;
 
-        if (nodes.find(name) != nodes.end()) {
+        if (movetype.empty() && nodes.find(name) != nodes.end()) {
             nodes[name].pos = POS(x, y);
             if (!orient.empty()) nodes[name].ori = orient;
+        } else if (pads.find(name) != pads.end()) {
+            pads[name].pos = POS(x, y);
+            if (!orient.empty()) pads[name].ori = orient;
+            if ((movetype == "/FIXED_NI" && !pads[name].NI) || (movetype == "/FIXED" && pads[name].NI))
+                cout << name << "fixed error" << endl;
         }
     }
     cout << "[PL] Positions updated." << endl;
@@ -106,7 +127,8 @@ void Parser::parseScl(const string& filename) {
     }
 
     string line;
-    int y = 0, height = 0, spacing = 0, site = 0, originX = 0, numSites = 0;
+    int y = 0, height = 0, spacing = 0, x = 0, numSites = 0;
+    string tmp;
     bool inRow = false;
 
     while (getline(fin, line)) {
@@ -120,21 +142,80 @@ void Parser::parseScl(const string& filename) {
             inRow = true;
         } else if (key == "End") {
             if (inRow) {
-                rows.push_back(ROW(POS(originX, y), height, spacing, site));
+                rows.push_back(ROW(POS(x, y), height, spacing, numSites));
                 inRow = false;
             }
         } else if (key == "Coordinate") {
-            ss >> y;
+            ss >> tmp >> y;
         } else if (key == "Height") {
-            ss >> height;
-        } else if (key == "Sitewidth") {
-            ss >> site;
+            ss >> tmp >> height;
         } else if (key == "Sitespacing") {
-            ss >> spacing;
+            ss >> tmp >> spacing;
         } else if (key == "SubrowOrigin") {
-            ss >> originX >> numSites;
+            ss >> tmp >> x >> tmp >> tmp >> numSites;
         }
     }
 
     cout << "[SCL] Loaded " << rows.size() << " rows." << endl;
+}
+
+void Parser::parseNets(const string& filename) {
+    ifstream fin(filename);
+    if (!fin) {
+        cerr << "Error: Cannot open " << filename << endl;
+        return;
+    }
+
+    string line, tmp;
+    NET currentNet;
+    bool inNet = false;
+
+    while (getline(fin, line)) {
+        if (line.empty() || line[0] == '#') continue;
+
+        stringstream ss(line);
+        string key;
+        ss >> key;
+
+        if (key == "UCLA") {
+            continue;  // 跳過標頭
+        } else if (key == "NumNets") {
+            ss >> tmp >> NumNets;
+            continue;
+        } else if (key == "NumPins") {
+            ss >> tmp >> NumPins;
+            continue;
+        } else if (key == "NetDegree") {
+            // 如果前一個 net 還沒存 → 先 push_back
+            if (inNet) {
+                nets.push_back(currentNet);
+                currentNet = NET();
+            }
+
+            int deg;
+            string netName;
+            ss >> tmp >> deg >> netName;
+
+            currentNet = NET(deg, netName);
+            inNet = true;
+        } else {
+            string dir;
+            prec xOff = 0, yOff = 0;
+            ss >> dir >> tmp;
+            if (!(ss >> xOff >> yOff)) {
+                xOff = 0;
+                yOff = 0;
+            }
+
+            PIN pin(key, dir, xOff, yOff);
+            currentNet.pins.push_back(pin);
+        }
+    }
+
+    // 最後一個 net 要補 push_back
+    if (inNet) {
+        nets.push_back(currentNet);
+    }
+
+    cout << "[NETS] Loaded " << nets.size() << " nets." << endl;
 }
