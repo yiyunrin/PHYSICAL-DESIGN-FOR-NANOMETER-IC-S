@@ -6,32 +6,65 @@ using namespace std;
 
 #define PIN_SIZE 3.0
 
-void Writer::writeChip(const string& filename, const vector<ROW>& rows) {
-    if (rows.empty()) return;
-
-    prec ymin = rows.front().pos.y;
-    prec ymax = rows.back().pos.y + rows.back().height;
-
-    prec xmin = rows.front().pos.x;
-    prec xmax = rows.front().pos.x + rows.front().site * rows.front().spacing;
-
+void Writer::writeChip(const string& filename, const vector<ROW>& rows, const unordered_map<string, PAD>& pads) {
     ofstream fout(filename);
-    fout << std::fixed << std::setprecision(3);
-    fout << xmin << " " << ymin << "\n";
-    fout << xmax << " " << ymin << "\n";
-    fout << xmax << " " << ymax << "\n";
-    fout << xmin << " " << ymax << "\n";
-    fout << xmin << " " << ymin << "\n";
-    fout.close();
+    fout << fixed << setprecision(3);
+    if (!fout) {
+        cerr << "Error: Cannot write " << filename << endl;
+        return;
+    }
 
-    cout << "[EXPORT] chip -> " << filename << endl;
+    // --- Core region ---
+    prec core_x_min = 1e9, core_y_min = 1e9;
+    prec core_x_max = -1e9, core_y_max = -1e9;
+
+    for (auto& r : rows) {
+        core_x_min = min(core_x_min, r.pos.x);
+        core_y_min = min(core_y_min, r.pos.y);
+        core_x_max = max(core_x_max, r.pos.x + r.site);
+        core_y_max = max(core_y_max, r.pos.y + r.height);
+    }
+
+    fout << "# core region\n";
+    fout << core_x_min << ", " << core_y_min << "\n";
+    fout << core_x_max << ", " << core_y_min << "\n";
+    fout << core_x_max << ", " << core_y_max << "\n";
+    fout << core_x_min << ", " << core_y_max << "\n";
+    fout << core_x_min << ", " << core_y_min << "\n\n";
+
+    // --- Die area ---
+    prec die_x_min = 1e9, die_y_min = 1e9;
+    prec die_x_max = -1e9, die_y_max = -1e9;
+
+    for (auto& kv : pads) {
+        const PAD& p = kv.second;
+        prec x0 = p.pos.x;
+        prec y0 = p.pos.y;
+        prec x1 = x0 + p.width;
+        prec y1 = y0 + p.height;
+
+        die_x_min = 0;  // min(die_x_min, x0);
+        die_y_min = 0;  // min(die_y_min, y0);
+        die_x_max = max(die_x_max, x1);
+        die_y_max = max(die_y_max, y1);
+    }
+
+    fout << "# die area\n";
+    fout << die_x_min << ", " << die_y_min << "\n";
+    fout << die_x_max << ", " << die_y_min << "\n";
+    fout << die_x_max << ", " << die_y_max << "\n";
+    fout << die_x_min << ", " << die_y_max << "\n";
+    fout << die_x_min << ", " << die_y_min << "\n";
+
+    fout.close();
+    cout << "[OUTPUT] chip (core + die) written to " << filename << endl;
 }
 
 void Writer::writeCells(const string& filename, const unordered_map<string, NODE>& nodes, const std::vector<std::string>& node_names) {
     ofstream fout(filename);
     fout << std::fixed << std::setprecision(3);
     fout << "#FENCE DEFAULT" << "\n";
-    fout << "0, 0\n";
+    fout << "0, 0\n\n";
     for (const string& node_name : node_names) {
         const NODE& n = nodes.at(node_name);
         prec x1 = n.pos.x;
@@ -80,7 +113,7 @@ void Writer::writePads(const string& filename, const unordered_map<string, PAD>&
     ofstream fout(filename);
     fout << fixed << setprecision(3);
     fout << "#FENCE DEFAULT" << "\n";
-    fout << "0, 0\n";
+    fout << "0, 0\n\n";
     if (!fout) {
         cerr << "Error: Cannot write " << filename << endl;
         return;
@@ -107,7 +140,7 @@ void Writer::writePads(const string& filename, const unordered_map<string, PAD>&
 
         // 2. 箭頭點 (初始為 N 方向)
         prec arr_w = w / 8.0, arr_h = h / 3.0;
-        prec arr_x = x + arr_w * 7.0, arr_y = y + arr_h * 2.0;
+        prec arr_x = x + arr_w * 6.0, arr_y = y + arr_h * 2.0;
         vector<POS> arrow = {
             POS(arr_x, arr_y + arr_h),
             POS(arr_x, arr_y),
@@ -177,7 +210,7 @@ void Writer::writePadPins(const string& filename, const unordered_map<string, NO
         return;
     }
     fout << "#FENCE DEFAULT" << "\n";
-    fout << "0, 0\n";
+    fout << "0, 0\n\n";
     for (auto& net : nets) {
         for (auto& pin : net.pins) {
             auto it = pads.find(pin.node);

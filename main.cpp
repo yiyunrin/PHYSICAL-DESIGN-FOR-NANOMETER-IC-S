@@ -1,95 +1,85 @@
-// g++ -std=c++11 -o HW1 main.cpp parser.cpp writer.cpp
-// ./HW1 ../benchmarks/benchmarks/adaptec1/adaptec1.aux
+#include <sys/stat.h>  // mkdir(), stat()
+#include <sys/types.h>
 
+#include <cstdlib>
 #include <iostream>
 
 #include "parser.h"
 #include "writer.h"
 using namespace std;
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        cerr << "Usage: ./HW1 <circuit.aux>" << endl;
-        return 1;
+// 檢查資料夾是否存在
+bool dirExists(const string &path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) return false;  // 無法取得資訊
+    return (info.st_mode & S_IFDIR);                   // 判斷是否為資料夾
+}
+
+// 建立資料夾（若不存在）
+void makeDir(const string &path) {
+    if (!dirExists(path)) {
+#ifdef _WIN32
+        _mkdir(path.c_str());
+#else
+        mkdir(path.c_str(), 0755);
+#endif
     }
+}
 
-    string path = "../benchmarks/benchmarks/adaptec1/";
+int main(int argc, char *argv[]) {
+    string basePath = "../benchmarks/benchmarks/";
+    vector<string> circuits = {
+        "adaptec1", "adaptec2", "adaptec3", "adaptec4",
+        "bigblue1", "bigblue2", "bigblue3", "bigblue4"};
 
-    Parser parser(argv[1]);
-    parser.parseAux();
-    parser.parseNodes(path + parser.nodesFile);
-    parser.parsePl(path + parser.plFile);
-    parser.parseScl(path + parser.sclFile);
-    parser.parseNets(path + parser.netsFile);
+    // 建立 dat 資料夾（如果沒有）
+    makeDir("dat");
 
-    cout << "=== SUMMARY ===" << endl;
+    for (auto &ckt : circuits) {
+        cout << "==============================" << endl;
+        cout << "Processing " << ckt << " ..." << endl;
 
-    // --- 總數 ---
-    cout << "Total Nodes: " << parser.nodes.size() << endl;
-    cout << "Total Pads : " << parser.pads.size() << endl;
-    cout << "Total Nets : " << parser.nets.size() << endl;
-    cout << "Total Rows : " << parser.rows.size() << endl;
-    cout << endl;
+        string cktPath = basePath + ckt + "/";
+        string auxPath = cktPath + ckt + ".aux";
+        string outDir = "dat/" + ckt;
 
-    // // --- NODE ---
-    // if (!parser.nodes.empty()) {
-    //     auto first = parser.nodes.begin();
+        // 建立 dat/ckt 資料夾
+        makeDir(outDir);
 
-    //     cout << "[NODE] First: " << first->second.name
-    //          << " pos=(" << first->second.pos.x << "," << first->second.pos.y << ")"
-    //          << " size=" << first->second.width << "x" << first->second.height
-    //          << " ori=" << first->second.ori << endl;
-    // }
+        // 檢查 input 是否存在
+        FILE *f = fopen(auxPath.c_str(), "r");
+        if (!f) {
+            cerr << "Warning: " << auxPath << " not found, skip." << endl;
+            continue;
+        }
+        fclose(f);
 
-    // // --- PAD ---
-    // if (!parser.pads.empty()) {
-    //     auto first = parser.pads.begin();
+        // 解析
+        Parser parser(auxPath);
+        parser.parseAux();
+        parser.parseNodes(cktPath + parser.nodesFile);
+        parser.parsePl(cktPath + parser.plFile);
+        parser.parseScl(cktPath + parser.sclFile);
+        parser.parseNets(cktPath + parser.netsFile);
 
-    //     cout << "[PAD] First: " << first->second.name
-    //          << " pos=(" << first->second.pos.x << "," << first->second.pos.y << ")"
-    //          << " size=" << first->second.width << "x" << first->second.height
-    //          << " ori=" << first->second.ori
-    //          << " NI=" << (first->second.NI ? "true" : "false") << endl;
-    // }
+        cout << "=== SUMMARY ===" << endl;
+        cout << "Total Nodes: " << parser.nodes.size() << endl;
+        cout << "Total Pads : " << parser.pads.size() << endl;
+        cout << "Total Nets : " << parser.nets.size() << endl;
+        cout << "Total Rows : " << parser.rows.size() << endl;
+        cout << endl;
 
-    // // --- NET ---
-    // if (!parser.nets.empty()) {
-    //     cout << "[NET] First: " << parser.nets.front().name
-    //          << " degree=" << parser.nets.front().degree << endl;
-    //     for (auto &p : parser.nets.front().pins) {
-    //         cout << "   pin " << p.node
-    //              << " dir=" << p.dir
-    //              << " offset=(" << p.x_offset << "," << p.y_offset << ")" << endl;
-    //     }
+        // 寫檔
+        Writer::writeChip(outDir + "/" + ckt + "_chip.dat", parser.rows, parser.pads);
+        Writer::writeCells(outDir + "/" + ckt + "_cell.dat", parser.nodes, parser.node_names);
+        Writer::writePads(outDir + "/" + ckt + "_pad.dat", parser.pads, parser.pad_names);
+        Writer::writePadPins(outDir + "/" + ckt + "_pad_pin.dat", parser.nodes, parser.nets, parser.pads);
 
-    //     cout << "[NET] Last : " << parser.nets.back().name
-    //          << " degree=" << parser.nets.back().degree << endl;
-    //     for (auto &p : parser.nets.back().pins) {
-    //         cout << "   pin " << p.node
-    //              << " dir=" << p.dir
-    //              << " offset=(" << p.x_offset << "," << p.y_offset << ")" << endl;
-    //     }
-    // }
-
-    // // --- ROW ---
-    // if (!parser.rows.empty()) {
-    //     cout << "[ROW] First: y=" << parser.rows.front().pos.y
-    //          << " x=" << parser.rows.front().pos.x
-    //          << " height=" << parser.rows.front().height
-    //          << " spacing=" << parser.rows.front().spacing
-    //          << " site=" << parser.rows.front().site << endl;
-
-    //     cout << "[ROW] Last : y=" << parser.rows.back().pos.y
-    //          << " x=" << parser.rows.back().pos.x
-    //          << " height=" << parser.rows.back().height
-    //          << " spacing=" << parser.rows.back().spacing
-    //          << " site=" << parser.rows.back().site << endl;
-    // }
-
-    Writer::writeChip("dat/adaptec1_chip.dat", parser.rows);
-    Writer::writeCells("dat/adaptec1_cell.dat", parser.nodes, parser.node_names);
-    Writer::writePads("dat/adaptec1_pad.dat", parser.pads, parser.pad_names);
-    Writer::writePadPins("dat/adaptec1_pad_pin.dat", parser.nodes, parser.nets, parser.pads);
+        cout << "Finished " << ckt << " ✅" << endl;
+        cout << "Output written to " << outDir << "/" << endl;
+        cout << "==============================" << endl
+             << endl;
+    }
 
     return 0;
 }
