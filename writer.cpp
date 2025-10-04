@@ -50,70 +50,123 @@ void Writer::writeCells(const string& filename, const unordered_map<string, NODE
     cout << "[EXPORT] cells -> " << filename << endl;
 }
 
-void Writer::writePads(const string& filename, const unordered_map<string, PAD>& pads, const std::vector<std::string>& pad_names) {
+void rotate90(vector<POS>& pts, prec cx, prec cy) {
+    for (auto& p : pts) {
+        prec dx = p.x - cx;
+        prec dy = p.y - cy;
+        prec newX = cx - dy;
+        prec newY = cy + dx;
+        p.x = newX;
+        p.y = newY;
+    }
+}
+
+// 沿 Y 軸翻轉 (基準點 cx,cy)
+void flipY(vector<POS>& pts, prec cx, prec cy) {
+    for (auto& p : pts) {
+        prec dx = p.x - cx;
+        p.x = cx - dx;
+    }
+}
+// 沿 X 軸翻轉 (基準點 cx, cy)
+void flipX(vector<POS>& pts, prec cx, prec cy) {
+    for (auto& p : pts) {
+        prec dy = p.y - cy;
+        p.y = cy - dy;
+    }
+}
+
+void Writer::writePads(const string& filename, const unordered_map<string, PAD>& pads, const vector<string>& pad_names) {
     ofstream fout(filename);
-    fout << std::fixed << std::setprecision(3);
+    fout << fixed << setprecision(3);
     fout << "#FENCE DEFAULT" << "\n";
     fout << "0, 0\n";
-    for (const string& pad_name : pad_names) {
-        const PAD& pad = pads.at(pad_name);
-        prec x1 = pad.pos.x;
-        prec y1 = pad.pos.y;
-        prec x2 = x1 + pad.width;
-        prec y2 = y1 + pad.height;
-
-        fout << "# " << pad.name << "\n";
-        fout << x1 << ", " << y1 << "\n";
-        fout << x2 << ", " << y1 << "\n";
-        fout << x2 << ", " << y2 << "\n";
-        fout << x1 << ", " << y2 << "\n";
-        fout << x1 << ", " << y1 << "\n\n";
-
-        // --- 畫 orientation arrow ---
-        prec cx = (x1 + x2) / 2.0;
-        prec cy = (y1 + y2) / 2.0;
-        prec arrow_len = (y2 - y1) / 3.0;  // 箭頭長度，可調
-
-        if (pad.ori == "N") {
-            fout << cx - 50 << ", " << cy + arrow_len * 0.7 << "\n";
-            fout << cx << ", " << y2 << "\n\n";
-
-            fout << cx << ", " << cy << "\n";
-            fout << cx << ", " << y2 << "\n\n";
-
-            fout << cx << ", " << y2 << "\n";
-            fout << cx + 50 << ", " << cy + arrow_len * 0.7 << "\n\n";
-        } else if (pad.ori == "S") {
-            fout << cx - 50 << ", " << cy - arrow_len * 0.7 << "\n";
-            fout << cx << ", " << y1 << "\n\n";
-
-            fout << cx << ", " << cy << "\n";
-            fout << cx << ", " << y1 << "\n\n";
-
-            fout << cx << ", " << y1 << "\n";
-            fout << cx + 50 << ", " << cy - arrow_len * 0.7 << "\n\n";
-        } else if (pad.ori == "E") {
-            fout << cx + arrow_len * 0.7 << ", " << cy - 50 << "\n";
-            fout << x2 << ", " << cy << "\n\n";
-
-            fout << cx << ", " << cy << "\n";
-            fout << x2 << ", " << cy << "\n\n";
-
-            fout << x2 << ", " << cy << "\n";
-            fout << cx + arrow_len * 0.7 << ", " << cy + 50 << "\n\n";
-        } else if (pad.ori == "W") {
-            fout << cx - arrow_len * 0.7 << ", " << cy - 50 << "\n";
-            fout << x1 << ", " << cy << "\n\n";
-
-            fout << cx << ", " << cy << "\n";
-            fout << x1 << ", " << cy << "\n\n";
-
-            fout << x1 << ", " << cy << "\n";
-            fout << cx - arrow_len * 0.7 << ", " << cy + 50 << "\n\n";
-        }
+    if (!fout) {
+        cerr << "Error: Cannot write " << filename << endl;
+        return;
     }
+
+    for (auto& pname : pad_names) {
+        auto it = pads.find(pname);
+        if (it == pads.end()) continue;
+        const PAD& pad = it->second;
+
+        prec x = pad.pos.x;
+        prec y = pad.pos.y;
+        prec w = pad.width;
+        prec h = pad.height;
+
+        // 1. pad 矩形點
+        vector<POS> pts = {
+            POS(x, y),
+            POS(x + w, y),
+            POS(x + w, y + h),
+            POS(x, y + h),
+            POS(x, y)  // close loop
+        };
+
+        // 2. 箭頭點 (初始為 N 方向)
+        prec arr_w = w / 8.0, arr_h = h / 3.0;
+        prec arr_x = x + arr_w * 7.0, arr_y = y + arr_h * 2.0;
+        vector<POS> arrow = {
+            POS(arr_x, arr_y + arr_h),
+            POS(arr_x, arr_y),
+            POS(arr_x - arr_w, arr_y + arr_h / 2.0),
+            POS(arr_x + arr_w, arr_y + arr_h / 2.0)};
+
+        // 3. 根據方向旋轉/翻轉
+        if (pad.ori == "N") {
+            // 不動
+        } else if (pad.ori == "W") {
+            rotate90(pts, x, y);
+            rotate90(arrow, x, y);
+        } else if (pad.ori == "S") {
+            rotate90(pts, x, y);
+            rotate90(pts, x, y);
+            rotate90(arrow, x, y);
+            rotate90(arrow, x, y);
+        } else if (pad.ori == "E") {
+            rotate90(pts, x, y);
+            rotate90(pts, x, y);
+            rotate90(pts, x, y);
+            rotate90(arrow, x, y);
+            rotate90(arrow, x, y);
+            rotate90(arrow, x, y);
+        } else if (pad.ori == "FN") {
+            flipY(pts, x, y);
+            flipY(arrow, x, y);
+        } else if (pad.ori == "FW") {
+            flipX(pts, x, y);
+            flipX(arrow, x, y);
+            rotate90(pts, x, y);
+            rotate90(arrow, x, y);
+        } else if (pad.ori == "FS") {
+            flipX(pts, x, y);
+            flipX(arrow, x, y);
+        } else if (pad.ori == "FE") {
+            flipY(pts, x, y);
+            flipY(arrow, x, y);
+            rotate90(pts, x, y);
+            rotate90(arrow, x, y);
+        }
+
+        // 4. 輸出矩形
+        fout << "#" << pad.name << " ori=" << pad.ori << "\n";
+        for (auto& p : pts) {
+            fout << p.x << ", " << p.y << "\n";
+        }
+        fout << "\n";
+
+        // 5. 輸出箭頭
+        for (size_t i = 1; i < arrow.size(); i++) {
+            fout << arrow[0].x << ", " << arrow[0].y << "\n";
+            fout << arrow[i].x << ", " << arrow[i].y << "\n\n";
+        }
+        // close loop
+    }
+
     fout.close();
-    cout << "[EXPORT] pads -> " << filename << endl;
+    cout << "[OUTPUT] pads written to " << filename << endl;
 }
 
 void Writer::writePadPins(const string& filename, const unordered_map<string, NODE>& nodes, const vector<NET>& nets, const unordered_map<string, PAD>& pads) {
@@ -123,7 +176,8 @@ void Writer::writePadPins(const string& filename, const unordered_map<string, NO
         cerr << "Error: Cannot write " << filename << endl;
         return;
     }
-
+    fout << "#FENCE DEFAULT" << "\n";
+    fout << "0, 0\n";
     for (auto& net : nets) {
         for (auto& pin : net.pins) {
             auto it = pads.find(pin.node);
