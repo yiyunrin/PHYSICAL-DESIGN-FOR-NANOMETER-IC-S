@@ -24,7 +24,7 @@ make clean #清除產生的檔案
 make
 make run
 ```
-執行結束後，會在 **"dat資料夾"** 中產生 adaptec1~4 和 bigblue1~4 的所有".dat檔"。
+執行結束後，會在 **"dat資料夾"** 中產生 adaptec1 ~ adaptec4 和 bigblue1 ~ bigblue4 的所有".dat檔"。
 
 ## gnuplot
 在 **"plt資料夾"** 中，有寫好的 ".plt檔"。進入此資料夾後，依序輸入下面指令，即可畫出需要的圖片。
@@ -64,4 +64,5 @@ HW1_P76144265/
 ├── HW1_P76144265     # 執行檔
 └── README.md         # 本文件
 ```
+
 
