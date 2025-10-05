@@ -17,7 +17,6 @@ class Parser {
     void parseScl(const std::string& filename);
     void parseNets(const std::string& filename);
 
-    // 存資料
     int NumNodes, NumTerminals, NumRows, NumNets, NumPins;
     std::vector<std::string> node_names, pad_names;
     std::unordered_map<std::string, NODE> nodes;
@@ -25,7 +24,6 @@ class Parser {
     std::vector<ROW> rows;
     std::vector<NET> nets;
 
-    // 檔名
     std::string nodesFile, netsFile, plFile, sclFile;
 
    private:

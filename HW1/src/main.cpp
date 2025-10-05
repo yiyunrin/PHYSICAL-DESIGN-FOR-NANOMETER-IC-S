@@ -1,4 +1,4 @@
-#include <sys/stat.h>  // mkdir(), stat()
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <cstdlib>
@@ -8,14 +8,12 @@
 #include "writer.h"
 using namespace std;
 
-// 檢查資料夾是否存在
 bool dirExists(const string &path) {
     struct stat info;
-    if (stat(path.c_str(), &info) != 0) return false;  // 無法取得資訊
-    return (info.st_mode & S_IFDIR);                   // 判斷是否為資料夾
+    if (stat(path.c_str(), &info) != 0) return false;
+    return (info.st_mode & S_IFDIR);
 }
 
-// 建立資料夾（若不存在）
 void makeDir(const string &path) {
     if (!dirExists(path)) {
 #ifdef _WIN32
@@ -32,7 +30,6 @@ int main(int argc, char *argv[]) {
         "adaptec1", "adaptec2", "adaptec3", "adaptec4",
         "bigblue1", "bigblue2", "bigblue3", "bigblue4"};
 
-    // 建立 dat 資料夾（如果沒有）
     makeDir("dat");
 
     for (auto &ckt : circuits) {
@@ -43,10 +40,8 @@ int main(int argc, char *argv[]) {
         string auxPath = cktPath + ckt + ".aux";
         string outDir = "dat/" + ckt;
 
-        // 建立 dat/ckt 資料夾
         makeDir(outDir);
 
-        // 檢查 input 是否存在
         FILE *f = fopen(auxPath.c_str(), "r");
         if (!f) {
             cerr << "Warning: " << auxPath << " not found, skip." << endl;
@@ -54,7 +49,6 @@ int main(int argc, char *argv[]) {
         }
         fclose(f);
 
-        // 解析
         Parser parser(auxPath);
         parser.parseAux();
         parser.parseNodes(cktPath + parser.nodesFile);
@@ -69,13 +63,12 @@ int main(int argc, char *argv[]) {
         cout << "Total Rows : " << parser.rows.size() << endl;
         cout << endl;
 
-        // 寫檔
         Writer::writeChip(outDir + "/" + ckt + "_chip.dat", parser.rows, parser.pads);
         Writer::writeCells(outDir + "/" + ckt + "_cell.dat", parser.nodes, parser.node_names);
         Writer::writePads(outDir + "/" + ckt + "_pad.dat", parser.pads, parser.pad_names);
         Writer::writePadPins(outDir + "/" + ckt + "_pad_pin.dat", parser.nodes, parser.nets, parser.pads);
 
-        cout << "Finished " << ckt << " ✅" << endl;
+        cout << "Finished " << ckt << endl;
         cout << "Output written to " << outDir << "/" << endl;
         cout << "==============================" << endl
              << endl;

@@ -21,7 +21,7 @@ void Parser::parseAux() {
 
         istringstream iss(line);
         string keyword;
-        iss >> keyword;  // "RowBasedPlacement"
+        iss >> keyword;
         string fname;
         while (iss >> fname) {
             if (fname.find(".nodes") != string::npos)
@@ -180,7 +180,7 @@ void Parser::parseNets(const string& filename) {
         ss >> key;
 
         if (key == "UCLA") {
-            continue;  // 跳過標頭
+            continue;
         } else if (key == "NumNets") {
             ss >> tmp >> NumNets;
             continue;
@@ -188,7 +188,6 @@ void Parser::parseNets(const string& filename) {
             ss >> tmp >> NumPins;
             continue;
         } else if (key == "NetDegree") {
-            // 如果前一個 net 還沒存 → 先 push_back
             if (inNet) {
                 nets.push_back(currentNet);
                 currentNet = NET();
@@ -214,7 +213,6 @@ void Parser::parseNets(const string& filename) {
         }
     }
 
-    // 最後一個 net 要補 push_back
     if (inNet) {
         nets.push_back(currentNet);
     }

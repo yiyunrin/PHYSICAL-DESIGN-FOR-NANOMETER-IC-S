@@ -14,7 +14,6 @@ void Writer::writeChip(const string& filename, const vector<ROW>& rows, const un
         return;
     }
 
-    // --- Core region ---
     prec core_x_min = 1e9, core_y_min = 1e9;
     prec core_x_max = -1e9, core_y_max = -1e9;
 
@@ -32,7 +31,6 @@ void Writer::writeChip(const string& filename, const vector<ROW>& rows, const un
     fout << core_x_min << ", " << core_y_max << "\n";
     fout << core_x_min << ", " << core_y_min << "\n\n";
 
-    // --- Die area ---
     prec die_x_min = 1e9, die_y_min = 1e9;
     prec die_x_max = -1e9, die_y_max = -1e9;
 
@@ -80,7 +78,7 @@ void Writer::writeCells(const string& filename, const unordered_map<string, NODE
         fout << x1 << ", " << y1 << "\n\n";
     }
     fout.close();
-    cout << "[EXPORT] cells -> " << filename << endl;
+    cout << "[OUTPUT] cells -> " << filename << endl;
 }
 
 void rotate90(vector<POS>& pts, prec cx, prec cy) {
@@ -94,14 +92,13 @@ void rotate90(vector<POS>& pts, prec cx, prec cy) {
     }
 }
 
-// 沿 Y 軸翻轉 (基準點 cx,cy)
 void flipY(vector<POS>& pts, prec cx, prec cy) {
     for (auto& p : pts) {
         prec dx = p.x - cx;
         p.x = cx - dx;
     }
 }
-// 沿 X 軸翻轉 (基準點 cx, cy)
+
 void flipX(vector<POS>& pts, prec cx, prec cy) {
     for (auto& p : pts) {
         prec dy = p.y - cy;
@@ -129,16 +126,13 @@ void Writer::writePads(const string& filename, const unordered_map<string, PAD>&
         prec w = pad.width;
         prec h = pad.height;
 
-        // 1. pad 矩形點
         vector<POS> pts = {
             POS(x, y),
             POS(x + w, y),
             POS(x + w, y + h),
             POS(x, y + h),
-            POS(x, y)  // close loop
-        };
+            POS(x, y)};
 
-        // 2. 箭頭點 (初始為 N 方向)
         prec arr_w = w / 8.0, arr_h = h / 3.0;
         prec arr_x = x + arr_w * 6.0, arr_y = y + arr_h * 2.0;
         vector<POS> arrow = {
@@ -147,9 +141,7 @@ void Writer::writePads(const string& filename, const unordered_map<string, PAD>&
             POS(arr_x - arr_w, arr_y + arr_h / 2.0),
             POS(arr_x + arr_w, arr_y + arr_h / 2.0)};
 
-        // 3. 根據方向旋轉/翻轉
         if (pad.ori == "N") {
-            // 不動
         } else if (pad.ori == "W") {
             rotate90(pts, x, y);
             rotate90(arrow, x, y);
@@ -183,19 +175,16 @@ void Writer::writePads(const string& filename, const unordered_map<string, PAD>&
             rotate90(arrow, x, y);
         }
 
-        // 4. 輸出矩形
         fout << "#" << pad.name << " ori=" << pad.ori << "\n";
         for (auto& p : pts) {
             fout << p.x << ", " << p.y << "\n";
         }
         fout << "\n";
 
-        // 5. 輸出箭頭
         for (size_t i = 1; i < arrow.size(); i++) {
             fout << arrow[0].x << ", " << arrow[0].y << "\n";
             fout << arrow[i].x << ", " << arrow[i].y << "\n\n";
         }
-        // close loop
     }
 
     fout.close();
